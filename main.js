@@ -1,118 +1,78 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { VertexAI } = require('@google-cloud/vertexai');
+const { ModelServiceClient } = require('@google-cloud/aiplatform');
 
-let genAI;
-let model;
+let vertexAI;
+let generativeModel;
 
-// --- НАСТРОЙКА GOOGLE GENERATIVE AI ---
-ipcMain.handle('init-ai', (event, apiKey) => {
+// --- НАСТРОЙКА VERTEX AI ---
+function initAI() {
     try {
-        console.log("DEBUG: Инициализация GenAI...");
-        console.log("DEBUG: Текущая директория:", process.cwd());
+        console.log("DEBUG: Инициализация Vertex AI с сервисным аккаунтом...");
+
+        process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'authfiles', 'gdd-suite-c531d4fedee0.json');
         
-        // Используем API-ключ из переменной окружения или из файла
-        const API_KEY = process.env.GOOGLE_API_KEY || apiKey;
-        
-        if (!API_KEY) {
-            console.error("API-ключ не найден. Пожалуйста, установите переменную окружения GOOGLE_API_KEY или передайте ключ через параметр.");
-            return { success: false, error: "API-ключ не найден" };
-        }
-        
-        // Инициализируем Google Generative AI с API-ключом
-        genAI = new GoogleGenerativeAI(API_KEY);
-        
-        // Модель будет создаваться динамически при каждом запросе
-        console.log("DEBUG: GenAI инициализирован успешно");
+        vertexAI = new VertexAI({
+            project: 'gdd-suite',
+            location: 'europe-west1'
+        });
+
+        console.log("DEBUG: Vertex AI инициализирован успешно");
         return { success: true };
     } catch (error) {
-        console.error("Ошибка инициализации GenAI:", error);
+        console.error("Ошибка инициализации Vertex AI:", error);
         return { success: false, error: error.message };
     }
-});
+}
+
+async function getAvailableModels(region) {
+    console.warn("DEBUG: getAvailableModels is disabled pending a fix for ModelServiceClient.");
+    return [];
+}
 
 async function generateQuestionFromAPI(history, settings) {
-  if (!genAI) {
-    return "AI не был инициализирован.";
+  if (!vertexAI) {
+    return "AI не был инициализирован. Проверьте настройки аутентификации.";
   }
 
-  // Получаем модель на основе настроек
-  const modelName = settings.model || 'gemini-2.5-flash-preview-05-20';
-  const model = genAI.getGenerativeModel({ model: modelName });
+  const modelName = settings.model || 'gemini-1.5-flash-preview-0514';
+  generativeModel = vertexAI.getGenerativeModel({ model: modelName });
 
   console.log(`DEBUG: Генерация вопроса с использованием модели ${modelName}...`);
-  console.log("DEBUG: История диалога:", JSON.stringify(history));
 
-  try {
-    // Создаем чат с настройками из интерфейса
-    const chat = model.startChat({
-      generationConfig: {
-        temperature: settings.temperature || 0.9,
-        maxOutputTokens: settings.maxOutputTokens || 1024,
-        topP: settings.topP || 1,
-        topK: settings.topK || 1
-      }
-    });
+  const chatHistory = history.map(turn => ({
+    role: turn.answer ? "user" : "model",
+    parts: [{ text: turn.answer || turn.question }]
+  })).slice(0, -1);
 
-    // Формируем историю сообщений
-    let lastMessage = "";
-    if (history.length > 0) {
-      for (const turn of history) {
-        if (turn.question && turn.answer) {
-          // Добавляем предыдущие сообщения в историю чата
-          await chat.sendMessage(turn.question);
-          lastMessage = turn.answer;
-        }
-      }
-    }
+  const lastUserAnswer = history.length > 0 && history[history.length - 1].answer ? history[history.length - 1].answer : "Я хочу создать игру. Помоги мне составить документ.";
 
-    // Отправляем последний ответ пользователя и получаем следующий вопрос
-    console.log("DEBUG: Отправка сообщения в API:", lastMessage || "Начало диалога");
+  const prompt = `Ты - ассистент по игровому дизайну. Твоя задача - помочь пользователю создать документ по дизайну игры, задавая логичные и краткие вопросы.
     
-    // Добавляем инструкции к запросу
-    const prompt = `Ты - ассистент по игровому дизайну. Твоя задача - помочь пользователю создать документ по дизайну игры, задавая логичные и краткие вопросы.
-    
-    Вот предыдущий ответ пользователя: "${lastMessage || "Я хочу создать игру. Помоги мне составить документ."}"
+    Вот предыдущий ответ пользователя: "${lastUserAnswer}"
     
     Задай ОДИН следующий логичный вопрос, который поможет пользователю лучше описать концепцию игры. Не повторяй вопросы, которые уже были заданы. Не добавляй никаких дополнительных фраз, только сам вопрос.`;
-    
+
+  try {
+    const chat = generativeModel.startChat({
+        history: chatHistory,
+        generationConfig: {
+            temperature: settings.temperature || 0.9,
+            maxOutputTokens: settings.maxOutputTokens || 1024,
+            topP: settings.topP || 1,
+            topK: settings.topK || 1
+        }
+    });
+
     const result = await chat.sendMessage(prompt);
+    const response = result.response;
     
-    console.log("DEBUG: Ответ получен:", JSON.stringify(result));
+    console.log("DEBUG: Ответ получен:", JSON.stringify(response));
     
-    const fallbackQuestions = [
-      "Какой жанр у вашей игры?",
-      "Кто будет целевой аудиторией вашей игры?",
-      "Какие основные механики будут в вашей игре?",
-      "Какая будет визуальная стилистика вашей игры?",
-      "Какую историю или сюжет вы планируете для вашей игры?",
-      "Какие платформы вы рассматриваете для выпуска вашей игры?",
-      "Какие уникальные особенности будут отличать вашу игру от конкурентов?",
-      "Как вы планируете монетизировать вашу игру?",
-      "Какие ресурсы вам потребуются для разработки этой игры?",
-      "Что еще вы хотели бы добавить в документ по дизайну вашей игры?"
-    ];
-
-    const getFallbackQuestion = () => {
-        // history.length будет от 1 и выше, а индекс массива с 0
-        const index = history.length - 1;
-        return fallbackQuestions[index] || fallbackQuestions[fallbackQuestions.length - 1];
-    };
-
-    try {
-      const nextQuestion = result.response.text();
-      if (nextQuestion && nextQuestion.trim() !== '') {
-        return nextQuestion;
-      } else {
-        console.log("DEBUG: Ответ от API пустой, используем запасной вопрос.");
-        return getFallbackQuestion();
-      }
-    } catch (error) {
-      console.error("Ошибка при извлечении текста из ответа, используем запасной вопрос:", error);
-      return getFallbackQuestion();
-    }
+    return response.candidates[0].content.parts[0].text;
   } catch (error) {
-    console.error("Ошибка при вызове GenAI API:", error);
+    console.error("Ошибка при вызове Vertex AI API:", error);
     return `Произошла ошибка API: ${error.message}`;
   }
 }
@@ -133,8 +93,17 @@ function createWindow () {
 }
 
 app.whenReady().then(() => {
+  const initResult = initAI();
+  if (!initResult.success) {
+      console.error("Не удалось инициализировать AI, приложение может работать некорректно.");
+  }
+
   ipcMain.handle('generate-question', async (event, history, settings) => {
     return await generateQuestionFromAPI(history, settings);
+  });
+
+  ipcMain.handle('get-models-for-region', async (event, region) => {
+    return await getAvailableModels(region);
   });
 
   createWindow();

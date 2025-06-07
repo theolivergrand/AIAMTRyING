@@ -14,93 +14,16 @@ const temperatureInput = document.getElementById('temperature');
 const maxOutputTokensInput = document.getElementById('maxOutputTokens');
 const topPInput = document.getElementById('topP');
 const topKInput = document.getElementById('topK');
+const regionInput = document.getElementById('region');
 const modelInput = document.getElementById('model');
 
 let conversationHistory = [];
-let lastUserAnswer = "";
 let generationSettings = {};
 
-// --- Создаем модальное окно для API-ключа ---
-function createApiKeyModal() {
-    const modal = document.createElement('div');
-    modal.className = 'api-key-modal';
-    modal.style.position = 'fixed';
-    modal.style.top = '0';
-    modal.style.left = '0';
-    modal.style.width = '100%';
-    modal.style.height = '100%';
-    modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
-    modal.style.display = 'flex';
-    modal.style.justifyContent = 'center';
-    modal.style.alignItems = 'center';
-    modal.style.zIndex = '1000';
-    
-    const modalContent = document.createElement('div');
-    modalContent.style.backgroundColor = 'white';
-    modalContent.style.padding = '20px';
-    modalContent.style.borderRadius = '5px';
-    modalContent.style.width = '400px';
-    modalContent.style.textAlign = 'center';
-    
-    const title = document.createElement('h2');
-    title.textContent = 'Введите ваш API-ключ Google AI';
-    
-    const description = document.createElement('p');
-    description.textContent = 'Пожалуйста, введите ваш API-ключ от Google AI Studio для начала работы.';
-    
-    const input = document.createElement('input');
-    input.type = 'password';
-    input.id = 'api-key-input';
-    input.placeholder = 'API-ключ...';
-    input.style.width = '100%';
-    input.style.padding = '10px';
-    input.style.marginBottom = '10px';
-    input.style.boxSizing = 'border-box';
-    
-    const button = document.createElement('button');
-    button.textContent = 'Сохранить и начать';
-    button.style.padding = '10px 15px';
-    button.style.backgroundColor = '#007bff';
-    button.style.color = 'white';
-    button.style.border = 'none';
-    button.style.borderRadius = '5px';
-    button.style.cursor = 'pointer';
-    
-    modalContent.appendChild(title);
-    modalContent.appendChild(description);
-    modalContent.appendChild(input);
-    modalContent.appendChild(button);
-    modal.appendChild(modalContent);
-    
-    document.body.appendChild(modal);
-    
-    return new Promise((resolve) => {
-        button.addEventListener('click', () => {
-            const apiKey = input.value;
-            document.body.removeChild(modal);
-            resolve(apiKey);
-        });
-    });
-}
-
-// --- Инициализация AI при запуске ---
+// --- Инициализация при запуске ---
 document.addEventListener('DOMContentLoaded', async () => {
-    loadSettings(); // Загружаем настройки при старте
-
-    // Запрашиваем API-ключ у пользователя через модальное окно
-    const apiKey = await createApiKeyModal();
-    
-    if (!apiKey) {
-        aiQuestionElement.innerText = "API-ключ не предоставлен. Перезагрузите страницу, чтобы попробовать снова.";
-        return;
-    }
-    
-    const result = await window.api.initAI(apiKey);
-    if (result.success) {
-        await displayQuestion();
-    } else {
-        aiQuestionElement.innerText = `Ошибка инициализации AI: ${result.error}`;
-    }
+    await loadSettingsAndModels();
+    await displayQuestion();
 });
 
 
@@ -114,7 +37,6 @@ async function displayQuestion() {
     if (conversationHistory.length === 0) {
         nextQuestion = "Какова основная идея вашей игры? Опишите ее в одном предложении.";
     } else {
-        // Передаем историю и настройки в главный процесс
         nextQuestion = await window.api.generateQuestion(conversationHistory, generationSettings);
     }
     
@@ -130,37 +52,15 @@ submitButton.addEventListener('click', async () => {
     const userAnswer = userInputElement.value;
     if (userAnswer.trim() === '' || submitButton.disabled) return;
 
-    // Проверяем, что у нас есть история диалога и последний элемент
-    if (conversationHistory.length > 0) {
-        const lastEntry = conversationHistory[conversationHistory.length - 1];
-        if (lastEntry) {
-            lastEntry.answer = userAnswer;
-            lastUserAnswer = userAnswer;
+    const lastEntry = conversationHistory[conversationHistory.length - 1];
+    if (lastEntry) {
+        lastEntry.answer = userAnswer;
 
-            const entry = document.createElement('div');
-            entry.innerHTML = `<h3>${lastEntry.question}</h3><p>${lastEntry.answer}</p>`;
-            documentContentElement.appendChild(entry);
-
-            userInputElement.value = '';
-            
-            await displayQuestion();
-        } else {
-            console.error("Последний элемент истории диалога не найден");
-        }
-    } else {
-        console.error("История диалога пуста");
-        // Если история пуста, создаем первый элемент
-        conversationHistory.push({ 
-            question: "Какова основная идея вашей игры? Опишите ее в одном предложении.", 
-            answer: userAnswer 
-        });
-        
         const entry = document.createElement('div');
-        entry.innerHTML = `<h3>Какова основная идея вашей игры? Опишите ее в одном предложении.</h3><p>${userAnswer}</p>`;
+        entry.innerHTML = `<h3>${lastEntry.question}</h3><p>${lastEntry.answer}</p>`;
         documentContentElement.appendChild(entry);
 
         userInputElement.value = '';
-        
         await displayQuestion();
     }
 });
@@ -181,26 +81,49 @@ likeButton.addEventListener('click', () => {
 });
 
 // --- Логика меню настроек ---
-function loadSettings() {
+async function loadSettingsAndModels() {
     const savedSettings = localStorage.getItem('generationSettings');
     if (savedSettings) {
         generationSettings = JSON.parse(savedSettings);
     } else {
-        // Значения по умолчанию
         generationSettings = {
             temperature: 0.9,
             maxOutputTokens: 1024,
             topP: 1,
             topK: 1,
-            model: 'gemini-2.5-flash-preview-05-20'
+            region: 'global',
+            model: ''
         };
     }
-    // Устанавливаем значения в поля ввода
+    
     temperatureInput.value = generationSettings.temperature;
     maxOutputTokensInput.value = generationSettings.maxOutputTokens;
     topPInput.value = generationSettings.topP;
     topKInput.value = generationSettings.topK;
+    regionInput.value = generationSettings.region;
+
+    await updateModelsForRegion(generationSettings.region);
     modelInput.value = generationSettings.model;
+}
+
+async function updateModelsForRegion(region) {
+    modelInput.innerHTML = '<option>Загрузка моделей...</option>';
+    modelInput.disabled = true;
+
+    const models = await window.api.getModelsForRegion(region);
+
+    modelInput.innerHTML = '';
+    if (models.length > 0) {
+        models.forEach(model => {
+            const option = document.createElement('option');
+            option.value = model.modelId;
+            option.textContent = `${model.displayName} (${model.modelId})`;
+            modelInput.appendChild(option);
+        });
+    } else {
+        modelInput.innerHTML = '<option>Модели не найдены</option>';
+    }
+    modelInput.disabled = false;
 }
 
 function saveSettings() {
@@ -209,7 +132,8 @@ function saveSettings() {
         maxOutputTokens: parseInt(maxOutputTokensInput.value) || 1024,
         topP: parseFloat(topPInput.value) || 1,
         topK: parseInt(topKInput.value) || 1,
-        model: modelInput.value || 'gemini-2.5-flash-preview-05-20'
+        region: regionInput.value,
+        model: modelInput.value
     };
     localStorage.setItem('generationSettings', JSON.stringify(generationSettings));
     settingsModal.style.display = 'none';
@@ -224,6 +148,10 @@ closeButton.addEventListener('click', () => {
 });
 
 saveSettingsButton.addEventListener('click', saveSettings);
+
+regionInput.addEventListener('change', (event) => {
+    updateModelsForRegion(event.target.value);
+});
 
 window.addEventListener('click', (event) => {
     if (event.target == settingsModal) {
