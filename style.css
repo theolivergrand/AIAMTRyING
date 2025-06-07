@@ -1,30 +1,44 @@
+/* Общие стили */
 body {
-    font-family: sans-serif;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     margin: 0;
-    background-color: #f0f0f0;
+    padding: 20px;
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    box-sizing: border-box;
 }
 
+h2 {
+    color: #9cdcfe;
+    border-bottom: 1px solid #444;
+    padding-bottom: 10px;
+    margin-top: 0;
+}
+
+/* Контейнер */
 .container {
     display: flex;
-    width: 90%;
-    height: 90%;
-    background-color: white;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    flex: 1;
+    gap: 20px;
+    overflow: hidden; /* Предотвращает выход дочерних элементов за пределы */
 }
 
+/* Панели */
 .documentation-panel, .interaction-panel {
+    background-color: #252526;
     padding: 20px;
-    box-sizing: border-box;
+    border-radius: 8px;
+    border: 1px solid #333;
+    display: flex;
+    flex-direction: column;
 }
 
 .documentation-panel {
     flex: 1;
-    border-right: 1px solid #ccc;
-    overflow-y: auto;
+    overflow-y: auto; /* Включает прокрутку для документации */
 }
 
 .interaction-panel {
@@ -33,139 +47,232 @@ body {
     flex-direction: column;
 }
 
-.ai-question {
-    background-color: #e9e9e9;
-    padding: 15px;
-    border-radius: 5px;
-    margin-bottom: 15px;
-    min-height: 50px;
+/* Панель документации */
+.document-content h3 {
+    color: #ce9178;
+    margin-top: 20px;
+    margin-bottom: 5px;
+}
+.document-content p {
+    margin-top: 0;
+    line-height: 1.6;
+    white-space: pre-wrap; /* Сохраняет форматирование текста */
 }
 
-textarea {
-    flex-grow: 1;
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    resize: none;
-    margin-bottom: 10px;
-}
 
-button {
-    padding: 10px 15px;
-    border: none;
-    background-color: #007bff;
-    color: white;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-button:hover {
-    background-color: #0056b3;
-}
-
+/* Панель взаимодействия */
 .ai-question-container {
-    display: flex;
-    align-items: center;
+    background-color: #1e1e1e;
+    padding: 15px;
+    border-radius: 6px;
     margin-bottom: 15px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* Центрирует текст по вертикали */
+    position: relative; /* Для позиционирования кнопки "лайк" */
 }
 
 .ai-question {
-    flex-grow: 1;
-    margin-bottom: 0; /* Убираем старый отступ */
+    font-size: 1.1em;
+    line-height: 1.5;
 }
 
 .like-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
     background: none;
     border: none;
-    font-size: 24px;
-    cursor: pointer;
-    padding: 0 10px;
     color: #cccccc;
+    cursor: pointer;
+    font-size: 24px;
+    transition: color 0.3s;
 }
 
 .like-button:hover {
-    color: #ffc107;
+    color: #ffffff;
 }
 
-/* Стили для иконки настроек */
-.settings-icon {
+
+textarea#user-input {
+    flex-basis: 100px; /* Начальная высота */
+    background-color: #3c3c3c;
+    color: #d4d4d4;
+    border: 1px solid #555;
+    border-radius: 4px;
+    padding: 10px;
+    font-size: 1em;
+    resize: vertical;
+    margin-bottom: 10px;
+}
+
+button#submit-button {
+    background-color: #0e639c;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.3s;
+}
+
+button#submit-button:hover {
+    background-color: #1177bb;
+}
+
+button#submit-button:disabled {
+    background-color: #555;
+    cursor: not-allowed;
+}
+
+/* Стили для тегов */
+.tag-container {
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.tag {
+    background-color: #3a3d41;
+    color: #d4d4d4;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 0.9em;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.tag .remove-tag {
+    cursor: pointer;
+    font-weight: bold;
+    color: #999;
+}
+.tag .remove-tag:hover {
+    color: #fff;
+}
+
+#tag-input {
+    background-color: #3c3c3c;
+    color: #d4d4d4;
+    border: 1px solid #555;
+    border-radius: 4px;
+    padding: 5px;
+    font-size: 0.9em;
+    flex-grow: 1;
+    min-width: 150px;
+}
+
+.autocomplete-suggestions {
     position: absolute;
+    border: 1px solid #555;
+    background-color: #252526;
+    z-index: 1000;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.autocomplete-suggestions div {
+    padding: 8px 12px;
+    cursor: pointer;
+}
+
+.autocomplete-suggestions div:hover {
+    background-color: #3c3c3c;
+}
+
+.autocomplete-suggestions .active {
+    background-color: #0e639c;
+}
+
+
+/* Настройки */
+.settings-icon {
+    position: fixed;
     top: 15px;
-    right: 15px;
+    right: 20px;
     font-size: 24px;
     cursor: pointer;
     z-index: 1001;
 }
 
-/* Стили для модального окна */
 .modal {
-    display: none; /* Скрыто по умолчанию */
-    position: fixed;
-    z-index: 1000;
+    display: none; 
+    position: fixed; 
+    z-index: 1000; 
     left: 0;
     top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background-color: rgba(0,0,0,0.4);
+    width: 100%; 
+    height: 100%; 
+    overflow: auto; 
+    background-color: rgba(0,0,0,0.6);
 }
 
 .modal-content {
-    background-color: #fefefe;
-    margin: 15% auto;
-    padding: 20px;
-    border: 1px solid #888;
+    background-color: #252526;
+    margin: 10% auto;
+    padding: 30px;
+    border: 1px solid #444;
     width: 80%;
-    max-width: 500px;
-    border-radius: 10px;
+    max-width: 600px;
+    border-radius: 8px;
     position: relative;
 }
 
 .close-button {
     color: #aaa;
-    float: right;
+    position: absolute;
+    top: 15px;
+    right: 25px;
     font-size: 28px;
     font-weight: bold;
 }
 
 .close-button:hover,
 .close-button:focus {
-    color: black;
+    color: #fff;
     text-decoration: none;
     cursor: pointer;
 }
 
 .setting {
-    margin-bottom: 15px;
+    margin-bottom: 20px;
 }
 
 .setting label {
     display: block;
-    margin-bottom: 5px;
+    margin-bottom: 8px;
+    color: #9cdcfe;
 }
 
-.setting input, .setting select {
+.setting input[type="number"],
+.setting input[type="text"],
+.setting select {
     width: 100%;
-    padding: 8px;
+    padding: 10px;
+    background-color: #3c3c3c;
+    border: 1px solid #555;
+    color: #d4d4d4;
+    border-radius: 4px;
     box-sizing: border-box;
 }
 
 #save-settings-button {
-    width: 100%;
+    background-color: #0e639c;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.3s;
+    float: right;
 }
 
-.key-file-container {
-    display: flex;
-    align-items: center;
-}
-
-#key-file-path {
-    flex-grow: 1;
-    margin-right: 10px;
-    background-color: #eee;
-    color: #333;
-}
-
-#select-key-file-button {
-    flex-shrink: 0;
+#save-settings-button:hover {
+    background-color: #1177bb;
 }
