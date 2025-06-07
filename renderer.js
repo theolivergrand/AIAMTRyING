@@ -5,8 +5,20 @@ const submitButton = document.getElementById('submit-button');
 const likeButton = document.getElementById('like-button');
 const documentContentElement = document.getElementById('document-content');
 
+// --- Элементы меню настроек ---
+const settingsButton = document.getElementById('settings-button');
+const settingsModal = document.getElementById('settings-modal');
+const closeButton = document.querySelector('.close-button');
+const saveSettingsButton = document.getElementById('save-settings-button');
+const temperatureInput = document.getElementById('temperature');
+const maxOutputTokensInput = document.getElementById('maxOutputTokens');
+const topPInput = document.getElementById('topP');
+const topKInput = document.getElementById('topK');
+const modelInput = document.getElementById('model');
+
 let conversationHistory = [];
 let lastUserAnswer = "";
+let generationSettings = {};
 
 // --- Создаем модальное окно для API-ключа ---
 function createApiKeyModal() {
@@ -73,6 +85,8 @@ function createApiKeyModal() {
 
 // --- Инициализация AI при запуске ---
 document.addEventListener('DOMContentLoaded', async () => {
+    loadSettings(); // Загружаем настройки при старте
+
     // Запрашиваем API-ключ у пользователя через модальное окно
     const apiKey = await createApiKeyModal();
     
@@ -100,7 +114,8 @@ async function displayQuestion() {
     if (conversationHistory.length === 0) {
         nextQuestion = "Какова основная идея вашей игры? Опишите ее в одном предложении.";
     } else {
-        nextQuestion = await window.api.generateQuestion(conversationHistory);
+        // Передаем историю и настройки в главный процесс
+        nextQuestion = await window.api.generateQuestion(conversationHistory, generationSettings);
     }
     
     aiQuestionElement.innerText = nextQuestion;
@@ -163,4 +178,55 @@ likeButton.addEventListener('click', () => {
 
     likeButton.style.color = '#ffc107'; 
     setTimeout(() => { likeButton.style.color = '#cccccc'; }, 1000);
+});
+
+// --- Логика меню настроек ---
+function loadSettings() {
+    const savedSettings = localStorage.getItem('generationSettings');
+    if (savedSettings) {
+        generationSettings = JSON.parse(savedSettings);
+    } else {
+        // Значения по умолчанию
+        generationSettings = {
+            temperature: 0.9,
+            maxOutputTokens: 1024,
+            topP: 1,
+            topK: 1,
+            model: 'gemini-2.5-flash-preview-05-20'
+        };
+    }
+    // Устанавливаем значения в поля ввода
+    temperatureInput.value = generationSettings.temperature;
+    maxOutputTokensInput.value = generationSettings.maxOutputTokens;
+    topPInput.value = generationSettings.topP;
+    topKInput.value = generationSettings.topK;
+    modelInput.value = generationSettings.model;
+}
+
+function saveSettings() {
+    generationSettings = {
+        temperature: parseFloat(temperatureInput.value) || 0.9,
+        maxOutputTokens: parseInt(maxOutputTokensInput.value) || 1024,
+        topP: parseFloat(topPInput.value) || 1,
+        topK: parseInt(topKInput.value) || 1,
+        model: modelInput.value || 'gemini-2.5-flash-preview-05-20'
+    };
+    localStorage.setItem('generationSettings', JSON.stringify(generationSettings));
+    settingsModal.style.display = 'none';
+}
+
+settingsButton.addEventListener('click', () => {
+    settingsModal.style.display = 'block';
+});
+
+closeButton.addEventListener('click', () => {
+    settingsModal.style.display = 'none';
+});
+
+saveSettingsButton.addEventListener('click', saveSettings);
+
+window.addEventListener('click', (event) => {
+    if (event.target == settingsModal) {
+        settingsModal.style.display = 'none';
+    }
 });

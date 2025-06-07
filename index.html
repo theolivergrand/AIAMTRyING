@@ -6,6 +6,40 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div id="settings-button" class="settings-icon">⚙️</div>
+
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Настройки генерации</h2>
+            <div class="setting">
+                <label for="temperature">Temperature (0-1):</label>
+                <input type="number" id="temperature" name="temperature" min="0" max="1" step="0.1">
+            </div>
+            <div class="setting">
+                <label for="maxOutputTokens">Max Tokens:</label>
+                <input type="number" id="maxOutputTokens" name="maxOutputTokens" min="1">
+            </div>
+            <div class="setting">
+                <label for="topP">Top P (0-1):</label>
+                <input type="number" id="topP" name="topP" min="0" max="1" step="0.1">
+            </div>
+            <div class="setting">
+                <label for="topK">Top K:</label>
+                <input type="number" id="topK" name="topK" min="1">
+            </div>
+            <div class="setting">
+                <label for="model">Model:</label>
+                <select id="model" name="model">
+                    <option value="gemini-2.5-flash-preview-05-20">gemini-2.5-flash-preview-05-20</option>
+                    <option value="gemini-2.0-flash-preview-image-generation">gemini-2.0-flash-preview-image-generation</option>
+                    <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite</option>
+                </select>
+            </div>
+            <button id="save-settings-button">Сохранить</button>
+        </div>
+    </div>
+
     <div class="container">
         <div class="documentation-panel">
             <h2>Ваш документ</h2>

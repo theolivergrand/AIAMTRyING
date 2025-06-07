@@ -22,9 +22,7 @@ ipcMain.handle('init-ai', (event, apiKey) => {
         // Инициализируем Google Generative AI с API-ключом
         genAI = new GoogleGenerativeAI(API_KEY);
         
-        // Получаем модель Gemini
-        model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-05-20" });
-        
+        // Модель будет создаваться динамически при каждом запросе
         console.log("DEBUG: GenAI инициализирован успешно");
         return { success: true };
     } catch (error) {
@@ -33,22 +31,26 @@ ipcMain.handle('init-ai', (event, apiKey) => {
     }
 });
 
-async function generateQuestionFromAPI(history) {
-  if (!model) {
+async function generateQuestionFromAPI(history, settings) {
+  if (!genAI) {
     return "AI не был инициализирован.";
   }
 
-  console.log("DEBUG: Генерация вопроса...");
+  // Получаем модель на основе настроек
+  const modelName = settings.model || 'gemini-2.5-flash-preview-05-20';
+  const model = genAI.getGenerativeModel({ model: modelName });
+
+  console.log(`DEBUG: Генерация вопроса с использованием модели ${modelName}...`);
   console.log("DEBUG: История диалога:", JSON.stringify(history));
 
   try {
-    // Создаем чат
+    // Создаем чат с настройками из интерфейса
     const chat = model.startChat({
       generationConfig: {
-        temperature: 0.9,
-        maxOutputTokens: 256,
-        topP: 1,
-        topK: 1
+        temperature: settings.temperature || 0.9,
+        maxOutputTokens: settings.maxOutputTokens || 1024,
+        topP: settings.topP || 1,
+        topK: settings.topK || 1
       }
     });
 
@@ -78,60 +80,36 @@ async function generateQuestionFromAPI(history) {
     
     console.log("DEBUG: Ответ получен:", JSON.stringify(result));
     
-    // Проверяем, есть ли текст в ответе
+    const fallbackQuestions = [
+      "Какой жанр у вашей игры?",
+      "Кто будет целевой аудиторией вашей игры?",
+      "Какие основные механики будут в вашей игре?",
+      "Какая будет визуальная стилистика вашей игры?",
+      "Какую историю или сюжет вы планируете для вашей игры?",
+      "Какие платформы вы рассматриваете для выпуска вашей игры?",
+      "Какие уникальные особенности будут отличать вашу игру от конкурентов?",
+      "Как вы планируете монетизировать вашу игру?",
+      "Какие ресурсы вам потребуются для разработки этой игры?",
+      "Что еще вы хотели бы добавить в документ по дизайну вашей игры?"
+    ];
+
+    const getFallbackQuestion = () => {
+        // history.length будет от 1 и выше, а индекс массива с 0
+        const index = history.length - 1;
+        return fallbackQuestions[index] || fallbackQuestions[fallbackQuestions.length - 1];
+    };
+
     try {
       const nextQuestion = result.response.text();
       if (nextQuestion && nextQuestion.trim() !== '') {
         return nextQuestion;
       } else {
-        // Если ответ пустой, генерируем следующий вопрос на основе истории
-        if (history.length === 1) {
-          return "Какой жанр у вашей игры?";
-        } else if (history.length === 2) {
-          return "Кто будет целевой аудиторией вашей игры?";
-        } else if (history.length === 3) {
-          return "Какие основные механики будут в вашей игре?";
-        } else if (history.length === 4) {
-          return "Какая будет визуальная стилистика вашей игры?";
-        } else if (history.length === 5) {
-          return "Какую историю или сюжет вы планируете для вашей игры?";
-        } else if (history.length === 6) {
-          return "Какие платформы вы рассматриваете для выпуска вашей игры?";
-        } else if (history.length === 7) {
-          return "Какие уникальные особенности будут отличать вашу игру от конкурентов?";
-        } else if (history.length === 8) {
-          return "Как вы планируете монетизировать вашу игру?";
-        } else if (history.length === 9) {
-          return "Какие ресурсы вам потребуются для разработки этой игры?";
-        } else {
-          return "Что еще вы хотели бы добавить в документ по дизайну вашей игры?";
-        }
+        console.log("DEBUG: Ответ от API пустой, используем запасной вопрос.");
+        return getFallbackQuestion();
       }
     } catch (error) {
-      console.error("Ошибка при извлечении текста из ответа:", error);
-      
-      // Если произошла ошибка при извлечении текста, генерируем следующий вопрос на основе истории
-      if (history.length === 1) {
-        return "Какой жанр у вашей игры?";
-      } else if (history.length === 2) {
-        return "Кто будет целевой аудиторией вашей игры?";
-      } else if (history.length === 3) {
-        return "Какие основные механики будут в вашей игре?";
-      } else if (history.length === 4) {
-        return "Какая будет визуальная стилистика вашей игры?";
-      } else if (history.length === 5) {
-        return "Какую историю или сюжет вы планируете для вашей игры?";
-      } else if (history.length === 6) {
-        return "Какие платформы вы рассматриваете для выпуска вашей игры?";
-      } else if (history.length === 7) {
-        return "Какие уникальные особенности будут отличать вашу игру от конкурентов?";
-      } else if (history.length === 8) {
-        return "Как вы планируете монетизировать вашу игру?";
-      } else if (history.length === 9) {
-        return "Какие ресурсы вам потребуются для разработки этой игры?";
-      } else {
-        return "Что еще вы хотели бы добавить в документ по дизайну вашей игры?";
-      }
+      console.error("Ошибка при извлечении текста из ответа, используем запасной вопрос:", error);
+      return getFallbackQuestion();
     }
   } catch (error) {
     console.error("Ошибка при вызове GenAI API:", error);
@@ -155,8 +133,8 @@ function createWindow () {
 }
 
 app.whenReady().then(() => {
-  ipcMain.handle('generate-question', async (event, history) => {
-    return await generateQuestionFromAPI(history);
+  ipcMain.handle('generate-question', async (event, history, settings) => {
+    return await generateQuestionFromAPI(history, settings);
   });
 
   createWindow();

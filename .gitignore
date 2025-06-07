@@ -33,3 +33,6 @@ credentials.json
 # Логи
 logs
 *.log
+
+# Логи инструментов Cline
+clinetoollogs/
