@@ -36,3 +36,6 @@ logs
 
 # Логи инструментов Cline
 clinetoollogs/
+
+#логи
+clinelogsandcontext/
