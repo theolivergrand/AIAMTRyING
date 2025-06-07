@@ -1,1 +1,11 @@
-10
+# Dependencies
+/node_modules
+
+# Log files
+debug_log.txt
+
+# Credentials
+gdd-suite-e0cac8be565e.json
+
+# Lock file
+package-lock.json
