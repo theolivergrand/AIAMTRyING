@@ -2,6 +2,8 @@
 <html>
 <head>
     <meta charset="UTF-8">
+    <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'">
     <title>Game Doc Assistant</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -29,17 +31,51 @@
                 <input type="number" id="topK" name="topK" min="1">
             </div>
             <div class="setting">
+                <label for="project-id">Project ID:</label>
+                <input type="text" id="project-id" name="project-id">
+            </div>
+            <div class="setting">
                 <label for="region">Region:</label>
                 <select id="region" name="region">
-                    <option value="us-central1">us-central1</option>
-                    <option value="europe-west1">europe-west1</option>
                     <option value="global">global</option>
+                    <option value="us-central1">us-central1 (рекомендуется для preview)</option>
+                    <option value="me-central2">me-central2 (Dammam)</option>
+                    <option value="me-central1">me-central1 (Doha)</option>
+                    <option value="me-west1">me-west1 (Tel Aviv)</option>
+                    <option value="europe-west4">europe-west4 (Netherlands)</option>
+                    <option value="europe-west9">europe-west9 (Paris)</option>
+                    <option value="europe-west2">europe-west2 (London)</option>
+                    <option value="europe-west3">europe-west3 (Frankfurt)</option>
+                    <option value="europe-west1">europe-west1 (Belgium)</option>
+                    <option value="europe-west6">europe-west6 (Zürich)</option>
+                    <option value="europe-southwest1">europe-southwest1 (Madrid)</option>
+                    <option value="europe-west8">europe-west8 (Milan)</option>
+                    <option value="europe-north1">europe-north1 (Finland)</option>
+                    <option value="europe-central2">europe-central2 (Warsaw)</option>
+                    <option value="asia-east1">asia-east1</option>
+                    <option value="asia-east2">asia-east2</option>
+                    <option value="asia-northeast1">asia-northeast1</option>
+                    <option value="asia-northeast2">asia-northeast2</option>
+                    <option value="asia-northeast3">asia-northeast3</option>
+                    <option value="asia-south1">asia-south1</option>
+                    <option value="asia-southeast1">asia-southeast1</option>
+                    <option value="asia-southeast2">asia-southeast2</option>
+                    <option value="australia-southeast1">australia-southeast1</option>
+                    <option value="australia-southeast2">australia-southeast2</option>
+                    <option value="us-east1">us-east1</option>
+                    <option value="us-east4">us-east4</option>
+                    <option value="us-east5">us-east5</option>
+                    <option value="us-south1">us-south1</option>
+                    <option value="us-west1">us-west1</option>
+                    <option value="us-west2">us-west2</option>
+                    <option value="us-west3">us-west3</option>
+                    <option value="us-west4">us-west4</option>
                 </select>
             </div>
             <div class="setting">
                 <label for="model">Model:</label>
                 <select id="model" name="model">
-                    <!-- Модели будут загружены динамически -->
+                    <!-- Модели будут загружены из renderer.js -->
                 </select>
             </div>
             <button id="save-settings-button">Сохранить</button>

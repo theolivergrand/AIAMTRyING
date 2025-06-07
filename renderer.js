@@ -14,6 +14,7 @@ const temperatureInput = document.getElementById('temperature');
 const maxOutputTokensInput = document.getElementById('maxOutputTokens');
 const topPInput = document.getElementById('topP');
 const topKInput = document.getElementById('topK');
+const projectIdInput = document.getElementById('project-id');
 const regionInput = document.getElementById('region');
 const modelInput = document.getElementById('model');
 
@@ -68,10 +69,13 @@ submitButton.addEventListener('click', async () => {
 likeButton.addEventListener('click', () => {
     if (conversationHistory.length < 2) return;
 
-    const relevantAnswer = conversationHistory[conversationHistory.length - 2].answer;
+    const previousInteraction = conversationHistory[conversationHistory.length - 2];
+    const relevantQuestion = previousInteraction.question;
+    const relevantAnswer = previousInteraction.answer;
     const likedQuestion = conversationHistory[conversationHistory.length - 1].question;
     
     console.log("--- ДАННЫЕ ДЛЯ ОБУЧЕНИЯ ---");
+    console.log("ПРЕДЫДУЩИЙ ВОПРОС ИИ:", relevantQuestion);
     console.log("ПРЕДЫДУЩИЙ ОТВЕТ ПОЛЬЗОВАТЕЛЯ:", relevantAnswer);
     console.log("ПОНРАВИВШИЙСЯ ВОПРОС ИИ:", likedQuestion);
     console.log("--------------------------");
@@ -86,13 +90,15 @@ async function loadSettingsAndModels() {
     if (savedSettings) {
         generationSettings = JSON.parse(savedSettings);
     } else {
+        // Значения по умолчанию
         generationSettings = {
             temperature: 0.9,
             maxOutputTokens: 1024,
             topP: 1,
             topK: 1,
-            region: 'global',
-            model: ''
+            projectId: '',
+            region: 'us-central1',
+            model: 'gemini-1.5-pro-latest',
         };
     }
     
@@ -100,30 +106,37 @@ async function loadSettingsAndModels() {
     maxOutputTokensInput.value = generationSettings.maxOutputTokens;
     topPInput.value = generationSettings.topP;
     topKInput.value = generationSettings.topK;
+    projectIdInput.value = generationSettings.projectId;
     regionInput.value = generationSettings.region;
 
-    await updateModelsForRegion(generationSettings.region);
+    populateModelList();
     modelInput.value = generationSettings.model;
 }
 
-async function updateModelsForRegion(region) {
-    modelInput.innerHTML = '<option>Загрузка моделей...</option>';
-    modelInput.disabled = true;
-
-    const models = await window.api.getModelsForRegion(region);
+function populateModelList() {
+    const models = [
+        { id: "gemini-2.5-flash-preview-05-20", name: "gemini-2.5-flash-preview-05-20" },
+        { id: "gemini-2.0-flash-001", name: "gemini-2.0-flash-001" },
+        { id: "gemini-2.0-flash-lite-001", name: "gemini-2.0-flash-lite-001" },
+        { id: "gemini-1.5-pro-002", name: "gemini-1.5-pro-002" },
+        { id: "gemini-1.5-flash-002", name: "gemini-1.5-flash-002" },
+        { id: "gemini-embedding-001", name: "gemini-embedding-001" },
+        { id: "imagegeneration@002", name: "imagegeneration@002" },
+        { id: "imagegeneration@005", name: "imagegeneration@005" },
+        { id: "imagegeneration@006", name: "imagegeneration@006" },
+        { id: "imagen-3.0-generate-001", name: "imagen-3.0-generate-001" },
+        { id: "imagen-3.0-fast-generate-001", name: "imagen-3.0-fast-generate-001" },
+        { id: "imagen-3.0-capability-001", name: "imagen-3.0-capability-001" },
+        { id: "imagen-3.0-generate-002", name: "imagen-3.0-generate-002" }
+    ];
 
     modelInput.innerHTML = '';
-    if (models.length > 0) {
-        models.forEach(model => {
-            const option = document.createElement('option');
-            option.value = model.modelId;
-            option.textContent = `${model.displayName} (${model.modelId})`;
-            modelInput.appendChild(option);
-        });
-    } else {
-        modelInput.innerHTML = '<option>Модели не найдены</option>';
-    }
-    modelInput.disabled = false;
+    models.forEach(model => {
+        const option = document.createElement('option');
+        option.value = model.id;
+        option.textContent = model.name;
+        modelInput.appendChild(option);
+    });
 }
 
 function saveSettings() {
@@ -132,8 +145,9 @@ function saveSettings() {
         maxOutputTokens: parseInt(maxOutputTokensInput.value) || 1024,
         topP: parseFloat(topPInput.value) || 1,
         topK: parseInt(topKInput.value) || 1,
+        projectId: projectIdInput.value,
         region: regionInput.value,
-        model: modelInput.value
+        model: modelInput.value,
     };
     localStorage.setItem('generationSettings', JSON.stringify(generationSettings));
     settingsModal.style.display = 'none';
@@ -148,10 +162,6 @@ closeButton.addEventListener('click', () => {
 });
 
 saveSettingsButton.addEventListener('click', saveSettings);
-
-regionInput.addEventListener('change', (event) => {
-    updateModelsForRegion(event.target.value);
-});
 
 window.addEventListener('click', (event) => {
     if (event.target == settingsModal) {

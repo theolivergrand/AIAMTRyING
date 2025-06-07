@@ -4,7 +4,7 @@
   "description": "An AI assistant to help create game design documents.",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "gcloud auth application-default login && electron ."
   },
   "keywords": [],
   "author": "",
@@ -13,9 +13,7 @@
     "electron": "^28.0.0"
   },
   "dependencies": {
-    "@google-cloud/aiplatform": "^4.2.0",
     "@google-cloud/vertexai": "latest",
-    "electron": "latest",
-    "google-auth-library": "^9.15.1"
+    "electron": "latest"
   }
 }
