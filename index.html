@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Game Doc Assistant</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="documentation-panel">
+            <h2>Ваш документ</h2>
+            <div id="document-content" class="document-content"></div>
+        </div>
+        <div class="interaction-panel">
+            <h2>Ассистент</h2>
+            <div class="ai-question-container">
+                <div id="ai-question" class="ai-question"></div>
+                <button id="like-button" class="like-button">👍</button>
+            </div>
+            <textarea id="user-input" placeholder="Ваш ответ..."></textarea>
+            <button id="submit-button">Отправить</button>
+        </div>
+    </div>
+    <script src="renderer.js"></script>
+</body>
+</html>
