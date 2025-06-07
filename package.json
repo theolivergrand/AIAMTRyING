@@ -15,6 +15,7 @@
   "dependencies": {
     "@google-cloud/aiplatform": "^4.2.0",
     "@google-cloud/vertexai": "latest",
-    "electron": "latest"
+    "electron": "latest",
+    "google-auth-library": "^9.15.1"
   }
 }

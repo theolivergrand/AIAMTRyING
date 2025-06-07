@@ -1,7 +1,6 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const { VertexAI } = require('@google-cloud/vertexai');
-const { ModelServiceClient } = require('@google-cloud/aiplatform');
 
 let vertexAI;
 let generativeModel;
@@ -9,9 +8,7 @@ let generativeModel;
 // --- НАСТРОЙКА VERTEX AI ---
 function initAI() {
     try {
-        console.log("DEBUG: Инициализация Vertex AI с сервисным аккаунтом...");
-
-        process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'authfiles', 'gdd-suite-c531d4fedee0.json');
+        console.log("DEBUG: Инициализация Vertex AI с использованием Application Default Credentials...");
         
         vertexAI = new VertexAI({
             project: 'gdd-suite',
@@ -26,9 +23,46 @@ function initAI() {
     }
 }
 
-async function getAvailableModels(region) {
-    console.warn("DEBUG: getAvailableModels is disabled pending a fix for ModelServiceClient.");
+async function getAvailableModels() {
+  try {
+    const accessToken = await getAccessToken();
+    if (!accessToken) {
+      throw new Error('Could not get access token');
+    }
+
+    const response = await fetch(`https://global-aiplatform.googleapis.com/v1/publishers/google/models`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const foundationModels = data.models
+      .filter(model => model.supportedGenerationMethods.includes('generateContent') && model.name.includes('gemini'))
+      .map(model => ({
+        displayName: model.displayName,
+        modelId: model.name.split('/').pop()
+      }));
+
+    return foundationModels;
+  } catch (error) {
+    console.error(`Ошибка при получении списка моделей для региона ${region}:`, error);
     return [];
+  }
+}
+
+async function getAccessToken() {
+  const { GoogleAuth } = require('google-auth-library');
+  const auth = new GoogleAuth({
+    scopes: 'https://www.googleapis.com/auth/cloud-platform'
+  });
+  const client = await auth.getClient();
+  const accessToken = (await client.getAccessToken()).token;
+  return accessToken;
 }
 
 async function generateQuestionFromAPI(history, settings) {
@@ -102,8 +136,8 @@ app.whenReady().then(() => {
     return await generateQuestionFromAPI(history, settings);
   });
 
-  ipcMain.handle('get-models-for-region', async (event, region) => {
-    return await getAvailableModels(region);
+  ipcMain.handle('get-models', async (event) => {
+    return await getAvailableModels();
   });
 
   createWindow();
