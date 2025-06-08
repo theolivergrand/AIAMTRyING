@@ -15,6 +15,7 @@ const saveDocButton = document.getElementById('save-doc-button');
 const documentPreview = document.getElementById('document-preview');
 
 // --- Элементы меню настроек ---
+const exportStatsButton = document.getElementById('export-stats-button');
 const settingsButton = document.getElementById('settings-button');
 const settingsModal = document.getElementById('settings-modal');
 const closeButton = document.querySelector('.close-button');
@@ -224,6 +225,15 @@ closeButton.addEventListener('click', () => {
 });
 
 saveSettingsButton.addEventListener('click', saveSettings);
+
+exportStatsButton.addEventListener('click', async () => {
+    const result = await window.api.exportStatistics(conversationHistory);
+    if (result.success) {
+        alert(result.message);
+    } else {
+        alert(`Ошибка экспорта: ${result.message}`);
+    }
+});
 
 window.addEventListener('click', (event) => {
     if (event.target == settingsModal) {

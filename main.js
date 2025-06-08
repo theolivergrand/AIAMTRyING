@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
-const fs = require('fs').promises;
+const fs = require('fs');
 const { VertexAI } = require('@google-cloud/vertexai');
 const { Storage } = require('@google-cloud/storage');
 
@@ -196,6 +196,43 @@ async function saveDocument(markdownContent, history, settings) {
 }
 
 /**
+ * Экспортирует статистику (историю диалога) в JSON файл.
+ * @param {Array} history - История диалога.
+ */
+async function exportStatistics(history) {
+    try {
+        const { filePath, canceled } = await dialog.showSaveDialog({
+            title: 'Экспортировать статистику для обучения',
+            defaultPath: 'training_data.json',
+            filters: [
+                { name: 'JSON', extensions: ['json'] },
+                { name: 'All Files', extensions: ['*'] }
+            ]
+        });
+
+        if (canceled || !filePath) {
+            return { success: false, message: 'Экспорт отменен.' };
+        }
+
+        // Оставляем только вопросы с ответами и тегами
+        const trainingData = history
+            .filter(turn => turn.answer && turn.tags && turn.tags.length > 0)
+            .map(turn => ({
+                question: turn.question,
+                tags: turn.tags
+            }));
+
+        await fs.promises.writeFile(filePath, JSON.stringify(trainingData, null, 2), 'utf-8');
+
+        return { success: true, message: `Статистика успешно экспортирована в ${filePath}` };
+
+    } catch (error) {
+        console.error('Ошибка при экспорте статистики:', error);
+        return { success: false, message: `Не удалось экспортировать статистику: ${error.message}` };
+    }
+}
+
+/**
  * Предлагает теги для вопроса с помощью модели Gemini.
  * @param {string} question - Текст вопроса.
  * @param {string[]} allTags - Массив всех возможных тегов.
@@ -315,6 +352,10 @@ app.whenReady().then(() => {
     const rendererSettings = await window.webContents.executeJavaScript('localStorage.getItem("generationSettings");', true);
     const parsedSettings = JSON.parse(rendererSettings);
     return await suggestTagsFromAPI(question, allTags, parsedSettings);
+  });
+
+  ipcMain.handle('export-statistics', async (event, history) => {
+    return await exportStatistics(history);
   });
 
   createWindow();
