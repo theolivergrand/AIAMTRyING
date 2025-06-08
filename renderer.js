@@ -8,6 +8,12 @@ const likeButton = document.getElementById('like-button');
 const documentContentElement = document.getElementById('document-content');
 const tagContainer = document.getElementById('tag-container');
 
+// --- Элементы генерации документа ---
+const generateDocButton = document.getElementById('generate-doc-button');
+const regenerateDocButton = document.getElementById('regenerate-doc-button');
+const saveDocButton = document.getElementById('save-doc-button');
+const documentPreview = document.getElementById('document-preview');
+
 // --- Элементы меню настроек ---
 const settingsButton = document.getElementById('settings-button');
 const settingsModal = document.getElementById('settings-modal');
@@ -20,6 +26,7 @@ const topKInput = document.getElementById('topK');
 const projectIdInput = document.getElementById('project-id');
 const regionInput = document.getElementById('region');
 const modelInput = document.getElementById('model');
+const gcsBucketInput = document.getElementById('gcs-bucket');
 
 let conversationHistory = [];
 let generationSettings = {};
@@ -77,21 +84,63 @@ submitButton.addEventListener('click', async () => {
 });
 
 likeButton.addEventListener('click', () => {
-    if (conversationHistory.length < 2) return;
-
-    const previousInteraction = conversationHistory[conversationHistory.length - 2];
-    const relevantQuestion = previousInteraction.question;
-    const relevantAnswer = previousInteraction.answer;
-    const likedQuestion = conversationHistory[conversationHistory.length - 1].question;
+    if (conversationHistory.length === 0) return;
     
-    console.log("--- ДАННЫЕ ДЛЯ ОБУЧЕНИЯ ---");
-    console.log("ПРЕДЫДУЩИЙ ВОПРОС ИИ:", relevantQuestion);
-    console.log("ПРЕДЫДУЩИЙ ОТВЕТ ПОЛЬЗОВАТЕЛЯ:", relevantAnswer);
-    console.log("ПОНРАВИВШИЙСЯ ВОПРОС ИИ:", likedQuestion);
-    console.log("--------------------------");
+    // Находим последний вопрос, на который еще не ответили
+    const lastEntry = conversationHistory[conversationHistory.length - 1];
+    if (lastEntry && !lastEntry.answer) {
+        lastEntry.liked = true; // Помечаем вопрос как понравившийся
+        console.log(`Вопрос "${lastEntry.question}" помечен как понравившийся.`);
+        
+        likeButton.style.color = '#ffc107';
+        setTimeout(() => { likeButton.style.color = '#cccccc'; }, 1000);
+    }
+});
 
-    likeButton.style.color = '#ffc107'; 
-    setTimeout(() => { likeButton.style.color = '#cccccc'; }, 1000);
+// --- Логика генерации и сохранения документа ---
+
+async function handleGenerateDocument() {
+    generateDocButton.disabled = true;
+    regenerateDocButton.disabled = true;
+    documentPreview.value = 'Генерация документа... Пожалуйста, подождите.';
+    documentPreview.style.display = 'block';
+
+    const generatedMarkdown = await window.api.generateDocument(conversationHistory, generationSettings);
+    
+    documentPreview.value = generatedMarkdown;
+
+    // Показываем/скрываем нужные кнопки
+    generateDocButton.style.display = 'none';
+    regenerateDocButton.style.display = 'inline-block';
+    saveDocButton.style.display = 'inline-block';
+    
+    generateDocButton.disabled = false;
+    regenerateDocButton.disabled = false;
+}
+
+generateDocButton.addEventListener('click', handleGenerateDocument);
+regenerateDocButton.addEventListener('click', handleGenerateDocument); // Перегенерация вызывает ту же функцию
+
+saveDocButton.addEventListener('click', async () => {
+    const markdownContent = documentPreview.value;
+    if (!markdownContent) {
+        alert('Нет документа для сохранения.');
+        return;
+    }
+
+    saveDocButton.disabled = true;
+    saveDocButton.textContent = 'Сохранение...';
+
+    const result = await window.api.saveDocument(markdownContent, conversationHistory, generationSettings);
+
+    if (result.success) {
+        alert(result.message); // Простое уведомление
+    } else {
+        alert(`Ошибка сохранения: ${result.message}`);
+    }
+
+    saveDocButton.disabled = false;
+    saveDocButton.textContent = 'Сохранить';
 });
 
 // --- Логика меню настроек ---
@@ -109,6 +158,7 @@ async function loadSettingsAndModels() {
             projectId: '',
             region: 'us-central1',
             model: 'gemini-1.5-pro-latest',
+            gcsBucket: '',
         };
     }
     
@@ -118,6 +168,7 @@ async function loadSettingsAndModels() {
     topKInput.value = generationSettings.topK;
     projectIdInput.value = generationSettings.projectId;
     regionInput.value = generationSettings.region;
+    gcsBucketInput.value = generationSettings.gcsBucket;
 
     populateModelList();
     modelInput.value = generationSettings.model;
@@ -158,6 +209,7 @@ function saveSettings() {
         projectId: projectIdInput.value,
         region: regionInput.value,
         model: modelInput.value,
+        gcsBucket: gcsBucketInput.value.trim(),
     };
     localStorage.setItem('generationSettings', JSON.stringify(generationSettings));
     settingsModal.style.display = 'none';
@@ -189,27 +241,18 @@ async function getAndDisplayTags(question) {
     tagContainer.innerHTML = '';
     currentTags.clear();
 
-    // TODO: Заменить на реальный вызов API для получения умных подсказок
-    const suggestedTags = suggestTagsMock(question); 
+    // Вызываем API для получения умных подсказок
+    try {
+        const suggestedTags = await window.api.suggestTags(question, ALL_TAGS);
+        if (Array.isArray(suggestedTags)) {
+            suggestedTags.forEach(tag => addTag(tag));
+        }
+    } catch (error) {
+        console.error("Ошибка при получении подсказок тегов:", error);
+        // Можно показать пользователю уведомление об ошибке, если нужно
+    }
     
-    suggestedTags.forEach(tag => addTag(tag));
-
     renderTagInput();
-}
-
-function suggestTagsMock(question) {
-    const suggestions = new Set();
-    const words = question.toLowerCase().split(/\s+/);
-    if (words.includes('концепция') || words.includes('идея')) {
-        suggestions.add('Vision');
-    }
-    if (words.includes('механика') || words.includes('геймплей')) {
-        suggestions.add('игровая механика');
-    }
-    if (words.includes('персонаж') || words.includes('герой')) {
-        suggestions.add('персонаж');
-    }
-    return Array.from(suggestions);
 }
 
 function renderTag(tagName) {

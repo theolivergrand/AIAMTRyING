@@ -78,6 +78,10 @@
                     <!-- Модели будут загружены из renderer.js -->
                 </select>
             </div>
+            <div class="setting">
+                <label for="gcs-bucket">Google Cloud Storage Bucket:</label>
+                <input type="text" id="gcs-bucket" name="gcs-bucket" placeholder="my-gdd-bucket-name">
+            </div>
             <button id="save-settings-button">Сохранить</button>
         </div>
     </div>
@@ -86,6 +90,14 @@
         <div class="documentation-panel">
             <h2>Ваш документ</h2>
             <div id="document-content" class="document-content"></div>
+            <div id="generated-document-container">
+                <div class="document-controls">
+                    <button id="generate-doc-button">Сгенерировать документ</button>
+                    <button id="regenerate-doc-button" style="display: none;">Перегенерировать</button>
+                    <button id="save-doc-button" style="display: none;">Сохранить</button>
+                </div>
+                <textarea id="document-preview" placeholder="Здесь появится сгенерированный документ..." style="display: none;"></textarea>
+            </div>
         </div>
         <div class="interaction-panel">
             <h2>Ассистент</h2>
