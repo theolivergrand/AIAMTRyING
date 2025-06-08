@@ -1,0 +1,15 @@
+{
+  "name": "gdd-suite-functions",
+  "version": "1.0.0",
+  "description": "Cloud Functions for GDD Suite",
+  "main": "index.js",
+  "engines": {
+    "node": "20"
+  },
+  "dependencies": {
+    "@google-cloud/vertexai": "latest",
+    "express": "^4.19.2",
+    "body-parser": "^1.20.2",
+    "@google-cloud/storage": "^7.16.0"
+  }
+}

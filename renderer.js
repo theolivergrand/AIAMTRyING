@@ -92,14 +92,20 @@ likeButton.addEventListener('click', () => {
     if (lastEntry && !lastEntry.answer) {
         lastEntry.liked = true; // Помечаем вопрос как понравившийся
         console.log(`Вопрос "${lastEntry.question}" помечен как понравившийся.`);
-        
+
+        // Отправляем фидбек в облако
+        window.api.collectFeedback({
+            question: lastEntry.question,
+            liked: true,
+            timestamp: new Date().toISOString()
+        }, generationSettings).then(result => console.log("Результат сбора фидбека:", result.message));
+
         likeButton.style.color = '#ffc107';
         setTimeout(() => { likeButton.style.color = '#cccccc'; }, 1000);
     }
 });
 
 // --- Логика генерации и сохранения документа ---
-
 async function handleGenerateDocument() {
     generateDocButton.disabled = true;
     regenerateDocButton.disabled = true;
@@ -107,9 +113,13 @@ async function handleGenerateDocument() {
     documentPreview.style.display = 'block';
 
     const generatedMarkdown = await window.api.generateDocument(conversationHistory, generationSettings);
-    
-    documentPreview.value = generatedMarkdown;
+    // generatedMarkdown теперь объект: { markdownContent, gcsMdPath, gcsJsonPath }
+    documentPreview.value = generatedMarkdown.markdownContent;
 
+    if (generatedMarkdown.gcsMdPath) {
+        console.log("Документ сохранен в GCS:", generatedMarkdown.gcsMdPath);
+        // Можно показать пользователю сообщение об этом
+    }
     // Показываем/скрываем нужные кнопки
     generateDocButton.style.display = 'none';
     regenerateDocButton.style.display = 'inline-block';
@@ -227,7 +237,7 @@ closeButton.addEventListener('click', () => {
 saveSettingsButton.addEventListener('click', saveSettings);
 
 exportStatsButton.addEventListener('click', async () => {
-    const result = await window.api.exportStatistics(conversationHistory);
+    const result = await window.api.exportStatistics(conversationHistory, generationSettings);
     if (result.success) {
         alert(result.message);
     } else {
@@ -253,7 +263,7 @@ async function getAndDisplayTags(question) {
 
     // Вызываем API для получения умных подсказок
     try {
-        const suggestedTags = await window.api.suggestTags(question, ALL_TAGS);
+        const suggestedTags = await window.api.suggestTags(question, ALL_TAGS, generationSettings);
         if (Array.isArray(suggestedTags)) {
             suggestedTags.forEach(tag => addTag(tag));
         }

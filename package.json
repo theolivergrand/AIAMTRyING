@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "An AI assistant to help create game design documents.",
   "main": "main.js",
+  "engines": {
+    "node": "20"
+  },
   "scripts": {
     "start": "set GOOGLE_APPLICATION_CREDENTIALS=%APPDATA%\\gcloud\\application_default_credentials.json && electron .",
     "login": "gcloud auth application-default login"
