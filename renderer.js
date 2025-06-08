@@ -7,6 +7,9 @@ const submitButton = document.getElementById('submit-button');
 const likeButton = document.getElementById('like-button');
 const documentContentElement = document.getElementById('document-content');
 const tagContainer = document.getElementById('tag-container');
+const suggestTagsButton = document.getElementById('suggest-tags-button');
+const nextQuestionButton = document.getElementById('next-question-button');
+const blacklistQuestionButton = document.getElementById('blacklist-question-button');
 
 // --- Элементы генерации документа ---
 const generateDocButton = document.getElementById('generate-doc-button');
@@ -38,6 +41,7 @@ const MAX_TAGS = 5;
 document.addEventListener('DOMContentLoaded', async () => {
     await loadSettingsAndModels();
     await displayQuestion();
+    renderTagInput(); // Начальный рендеринг поля ввода тегов
 });
 
 
@@ -47,11 +51,14 @@ async function displayQuestion() {
     likeButton.style.display = 'none';
     aiQuestionElement.innerText = 'Генерирую вопрос...';
 
+    clearTags(); // Очищаем старые теги
+
     let nextQuestion;
     if (conversationHistory.length === 0) {
         nextQuestion = "Какова основная идея вашей игры? Опишите ее в одном предложении.";
     } else {
-        nextQuestion = await window.api.generateQuestion(conversationHistory, generationSettings);
+        const questionBlacklist = JSON.parse(localStorage.getItem('questionBlacklist') || '[]');
+        nextQuestion = await window.api.generateQuestion(conversationHistory, generationSettings, questionBlacklist);
     }
     
     aiQuestionElement.innerText = nextQuestion;
@@ -60,10 +67,35 @@ async function displayQuestion() {
     likeButton.style.display = 'block';
 
     // Управляем отображением тегов
-    await getAndDisplayTags(nextQuestion);
+    // await getAndDisplayTags(nextQuestion); // Больше не вызываем автоматически
 
     conversationHistory.push({ question: nextQuestion, answer: null, tags: [] });
 }
+
+nextQuestionButton.addEventListener('click', displayQuestion);
+
+blacklistQuestionButton.addEventListener('click', async () => {
+    const questionToBlacklist = aiQuestionElement.innerText;
+    if (questionToBlacklist && questionToBlacklist !== 'Генерирую вопрос...') {
+        let blacklist = JSON.parse(localStorage.getItem('questionBlacklist') || '[]');
+        if (!blacklist.includes(questionToBlacklist)) {
+            blacklist.push(questionToBlacklist);
+            localStorage.setItem('questionBlacklist', JSON.stringify(blacklist));
+        }
+        await displayQuestion(); // Запрашиваем новый вопрос
+    }
+});
+
+suggestTagsButton.addEventListener('click', async () => {
+    const currentQuestion = aiQuestionElement.innerText;
+    if (currentQuestion && currentQuestion !== 'Генерирую вопрос...') {
+        suggestTagsButton.disabled = true;
+        suggestTagsButton.textContent = 'Думаю...';
+        await getAndDisplayTags(currentQuestion);
+        suggestTagsButton.disabled = false;
+        suggestTagsButton.textContent = 'Предложить теги';
+    }
+});
 
 submitButton.addEventListener('click', async () => {
     const userAnswer = userInputElement.value;
@@ -112,7 +144,16 @@ async function handleGenerateDocument() {
     documentPreview.value = 'Генерация документа... Пожалуйста, подождите.';
     documentPreview.style.display = 'block';
 
-    const generatedMarkdown = await window.api.generateDocument(conversationHistory, generationSettings);
+    // Отправляем на генерацию только те вопросы, на которые есть ответ
+    const answeredHistory = conversationHistory.filter(turn => turn.answer && turn.answer.trim() !== '');
+    if (answeredHistory.length === 0) {
+        documentPreview.value = 'Вы еще не ответили ни на один вопрос. Документ не может быть создан.';
+        generateDocButton.disabled = false;
+        regenerateDocButton.disabled = false;
+        return;
+    }
+
+    const generatedMarkdown = await window.api.generateDocument(answeredHistory, generationSettings);
     // generatedMarkdown теперь объект: { markdownContent, gcsMdPath, gcsJsonPath }
     documentPreview.value = generatedMarkdown.markdownContent;
 
@@ -163,7 +204,7 @@ async function loadSettingsAndModels() {
         // Значения по умолчанию
         generationSettings = {
             temperature: 0.9,
-            maxOutputTokens: 1024,
+            maxOutputTokens: 16384, // Увеличено по умолчанию
             topP: 1,
             topK: 1,
             projectId: '',
@@ -183,23 +224,23 @@ async function loadSettingsAndModels() {
 
     populateModelList();
     modelInput.value = generationSettings.model;
+    populateProjectIdList();
+
+    // Показываем настройки, если Project ID не задан
+    if (!generationSettings.projectId) {
+        settingsModal.style.display = 'block';
+    }
 }
 
 function populateModelList() {
     const models = [
+        { id: "gemini-2.5-pro-preview-06-05", name: "gemini-2.5-pro-preview-06-05" },
         { id: "gemini-2.5-flash-preview-05-20", name: "gemini-2.5-flash-preview-05-20" },
-        { id: "gemini-2.0-flash-001", name: "gemini-2.0-flash-001" },
-        { id: "gemini-2.0-flash-lite-001", name: "gemini-2.0-flash-lite-001" },
-        { id: "gemini-1.5-pro-002", name: "gemini-1.5-pro-002" },
-        { id: "gemini-1.5-flash-002", name: "gemini-1.5-flash-002" },
-        { id: "gemini-embedding-001", name: "gemini-embedding-001" },
-        { id: "imagegeneration@002", name: "imagegeneration@002" },
-        { id: "imagegeneration@005", name: "imagegeneration@005" },
-        { id: "imagegeneration@006", name: "imagegeneration@006" },
-        { id: "imagen-3.0-generate-001", name: "imagen-3.0-generate-001" },
-        { id: "imagen-3.0-fast-generate-001", name: "imagen-3.0-fast-generate-001" },
-        { id: "imagen-3.0-capability-001", name: "imagen-3.0-capability-001" },
-        { id: "imagen-3.0-generate-002", name: "imagen-3.0-generate-002" }
+        { id: "gemini-2.0-flash", name: "gemini-2.0-flash" },
+        { id: "gemini-2.0-flash-preview-image-generation", name: "gemini-2.0-flash-preview-image-generation" },
+        { id: "gemini-2.0-flash-lite", name: "gemini-2.0-flash-lite" },
+        { id: "gemini-1.5-flash", name: "gemini-1.5-flash" },
+        { id: "gemini-embedding-exp", name: "gemini-embedding-exp" }
     ];
 
     modelInput.innerHTML = '';
@@ -207,22 +248,47 @@ function populateModelList() {
         const option = document.createElement('option');
         option.value = model.id;
         option.textContent = model.name;
-        modelInput.appendChild(option);
+    modelInput.appendChild(option);
+    });
+}
+
+function populateProjectIdList() {
+    const projectIdList = document.getElementById('project-id-list');
+    const savedProjectIds = JSON.parse(localStorage.getItem('savedProjectIds') || '[]');
+    
+    projectIdList.innerHTML = ''; // Очищаем старые опции
+    savedProjectIds.forEach(id => {
+        const option = document.createElement('option');
+        option.value = id;
+        projectIdList.appendChild(option);
     });
 }
 
 function saveSettings() {
     generationSettings = {
         temperature: parseFloat(temperatureInput.value) || 0.9,
-        maxOutputTokens: parseInt(maxOutputTokensInput.value) || 1024,
+        maxOutputTokens: parseInt(maxOutputTokensInput.value) || 16384,
         topP: parseFloat(topPInput.value) || 1,
         topK: parseInt(topKInput.value) || 1,
-        projectId: projectIdInput.value,
+        projectId: projectIdInput.value.trim(),
         region: regionInput.value,
         model: modelInput.value,
         gcsBucket: gcsBucketInput.value.trim(),
     };
     localStorage.setItem('generationSettings', JSON.stringify(generationSettings));
+
+    // Сохраняем ID проекта в историю
+    const newProjectId = projectIdInput.value.trim();
+    if (newProjectId) {
+        let savedProjectIds = JSON.parse(localStorage.getItem('savedProjectIds') || '[]');
+        if (!savedProjectIds.includes(newProjectId)) {
+            savedProjectIds.push(newProjectId);
+            localStorage.setItem('savedProjectIds', JSON.stringify(savedProjectIds));
+            // Обновляем datalist в реальном времени
+            populateProjectIdList();
+        }
+    }
+
     settingsModal.style.display = 'none';
 }
 
@@ -258,21 +324,25 @@ window.addEventListener('click', (event) => {
 // --- Логика Тегов ---
 
 async function getAndDisplayTags(question) {
-    tagContainer.innerHTML = '';
-    currentTags.clear();
-
-    // Вызываем API для получения умных подсказок
     try {
         const suggestedTags = await window.api.suggestTags(question, ALL_TAGS, generationSettings);
-        if (Array.isArray(suggestedTags)) {
-            suggestedTags.forEach(tag => addTag(tag));
+        
+        if (Array.isArray(suggestedTags) && suggestedTags.length > 0) {
+            // Добавляем каждый тег как отдельную плашку с #
+            suggestedTags.forEach(tag => {
+                addTag(`#${tag}`);
+            });
         }
     } catch (error) {
         console.error("Ошибка при получении подсказок тегов:", error);
-        // Можно показать пользователю уведомление об ошибке, если нужно
+        alert("Не удалось получить подсказки тегов из-за ошибки сервера.");
     }
-    
-    renderTagInput();
+}
+
+function clearTags() {
+    tagContainer.innerHTML = ''; // Очищаем DOM-элементы
+    currentTags.clear(); // Очищаем набор данных
+    renderTagInput(); // Восстанавливаем поле для ввода
 }
 
 function renderTag(tagName) {

@@ -32,7 +32,8 @@
             </div>
             <div class="setting">
                 <label for="project-id">Project ID:</label>
-                <input type="text" id="project-id" name="project-id">
+                <input type="text" id="project-id" name="project-id" list="project-id-list">
+                <datalist id="project-id-list"></datalist>
             </div>
             <div class="setting">
                 <label for="region">Region:</label>
@@ -105,6 +106,11 @@
             <div class="ai-question-container">
                 <div id="ai-question" class="ai-question"></div>
                 <div id="tag-container" class="tag-container"></div>
+                <div class="question-controls">
+                    <button id="suggest-tags-button">Предложить теги</button>
+                    <button id="next-question-button" class="question-control-button">Следующий вопрос</button>
+                    <button id="blacklist-question-button" class="question-control-button">Вопрос уже был</button>
+                </div>
                 <button id="like-button" class="like-button">👍</button>
             </div>
             <textarea id="user-input" placeholder="Ваш ответ..."></textarea>

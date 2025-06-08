@@ -139,22 +139,52 @@ app.whenReady().then(() => {
 
   // --- ОБРАБОТЧИКИ IPC (СВЯЗЬ С ИНТЕРФЕЙСОМ) ---
 
-  ipcMain.handle('generate-question', async (event, history, settings) => {
-    const result = await callCloudApi('/generateQuestion', { history, settings });
+  ipcMain.handle('generate-question', async (event, history, settings, questionBlacklist) => {
+    const result = await callCloudApi('/generateQuestion', { history, settings, questionBlacklist });
     return result.error ? `Ошибка: ${result.error}` : result.question;
   });
 
   ipcMain.handle('generate-document', async (event, history, settings) => {
     const result = await callCloudApi('/generateDocument', { history, settings });
-    return result.error ? `Ошибка: ${result.error}` : result.document;
+    if (result.error) {
+        return `Ошибка: ${result.error}`;
+    }
+    return result.document || 'Ошибка: Сервер не вернул содержимое документа.';
   });
   
   ipcMain.handle('suggest-tags', async (event, question, allTags) => {
     const window = BrowserWindow.fromWebContents(event.sender);
     const rendererSettings = await window.webContents.executeJavaScript('localStorage.getItem("generationSettings");', true);
     const parsedSettings = JSON.parse(rendererSettings || '{}');
-    const result = await callCloudApi('/suggestTags', { question, allTags, settings: parsedSettings });
+
+    // Не отправляем запрос, если нет projectId
+    if (!parsedSettings.projectId) {
+        console.log('Отсутствует Project ID в настройках, пропуск вызова suggestTags.');
+        return [];
+    }
+
+    // Создаем копию настроек, чтобы не изменять оригинал
+    const tagSettings = { ...parsedSettings };
+    // Принудительно устанавливаем модель для подсказки тегов
+    tagSettings.model = 'gemini-2.0-flash-lite'; 
+
+    const payload = { question, allTags, settings: tagSettings };
+    const result = await callCloudApi('/suggestTags', payload);
     return result.error ? [] : result.tags;
+});
+
+  ipcMain.handle('collect-feedback', async (event, feedback, settings) => {
+    // В будущем здесь может быть более сложная логика или вызов другого API
+    console.log('Получен фидбек:', feedback);
+    const result = await callCloudApi('/collectFeedback', { feedback, settings });
+    return result.error ? { success: false, message: result.error } : { success: true, message: 'Фидбек получен' };
+  });
+
+  ipcMain.handle('blacklist-question', async (event, question) => {
+    // Этот обработчик больше не нужен, так как логика перенесена в renderer.js,
+    // но оставим его пустым на случай, если старый код его вызовет.
+    console.log(`Вопрос "${question}" помечен как "уже был", но обработка происходит в рендерере.`);
+    return { success: true };
   });
 
   // Локальные обработчики
